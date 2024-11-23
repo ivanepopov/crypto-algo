@@ -1,83 +1,90 @@
 #include "aes.h"
 
-AES::AES(unsigned newrounds, const char* newkey) {
+AES::AES(unsigned keyLength, const string& keyText) {
     
-    key = textToBytes(newkey);
-    rounds = newrounds;
+    if      (keyLength == 128)   nr = 10;
+    else if (keyLength == 192)   nr = 12;
+    else  /*(keyLength == 256)*/ nr = 14;
 
-    keyList = new byte*[11];
-    keyList[0] = key;
-    keyList = expandKeys(key);
+    key = keyText;
+    nk = keyLength / 32;
+    wordCount = (nr + 1) * 4;
+
+    vector<vector<byte>> words(wordCount, vector<byte>(4, 0));
+    wordList = words;
+    
+    expandKeys(keyLength, keyText);
 }
 
 char* AES::encrypt(const char* plaintext) {
 
-    byte* bytes = textToBytes(plaintext);
+    vector<byte> bytes = textToBytes(plaintext);
 
     // ROUND 0
-    addRoundKey(bytes, keyList[0]);
+    addRoundKey(bytes, 0);
 
-    // ROUNDS 1 - 9
+    // ROUNDS 1 - Nr
     int i = 1;
-    for (; i < 10; i++) {
+    for (; i < nr; i++) {
         substituteBytes(bytes);
         shiftRows(bytes);
         mixColumns(bytes);
-        addRoundKey(bytes, keyList[i]);
+        addRoundKey(bytes, 4*i);
     }
 
-    // ROUND 10
+    // FINAL ROUND
     substituteBytes(bytes);
     shiftRows(bytes);
-    addRoundKey(bytes, keyList[i]);
+    addRoundKey(bytes, 4*i);
 
     return bytesToText(bytes);
 };
 char* AES::decrypt(const char* ciphertext) {
     
-    byte* bytes = textToBytes(ciphertext);
+    vector<byte> bytes = textToBytes(ciphertext);
 
-    // ROUND 10
-    addRoundKey(bytes, keyList[10]);
+    // ROUND Nr
+    addRoundKey(bytes, 4*nr);
 
-    // ROUNDS 9 - 1
-    int i = 9;
+    // ROUNDS Nr - 1
+    int i = nr - 1;
     for (; i > 0; i--) {
         inverseShiftRows(bytes);
         inverseSubstituteBytes(bytes);
-        addRoundKey(bytes, keyList[i]);
+        addRoundKey(bytes, 4*i);
         inverseMixColumns(bytes);
     }
 
+    // ROUND 0
     inverseShiftRows(bytes);
     inverseSubstituteBytes(bytes);
-    addRoundKey(bytes, keyList[0]);
+    addRoundKey(bytes, 0);
 
     return bytesToText(bytes);
 }
 
 // *** STEP 1 : SUB BYTES *** //
-byte AES::substituteByte(byte byte) {
+void AES::substituteByte(byte& byte) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << std::hex << +byte;
-    return Sbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
+    byte = Sbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
 }
-void AES::substituteBytes(byte* bytes) { 
+void AES::substituteBytes(vector<byte>& bytes) { 
     for (int i = 0; i < 16; i++)
-        bytes[i] = substituteByte(bytes[i]);
+        substituteByte(bytes[i]);
 }
-byte AES::inverseSubstituteByte(byte byte) {
+void AES::inverseSubstituteByte(byte& byte) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << std::hex << +byte;
-    return inverseSbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
+    byte = inverseSbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
 }
-void AES::inverseSubstituteBytes(byte* bytes) { 
+void AES::inverseSubstituteBytes(vector<byte>& bytes) { 
     for (int i = 0; i < 16; i++)
-        bytes[i] = inverseSubstituteByte(bytes[i]);
+        inverseSubstituteByte(bytes[i]);
 }
 
 // *** STEP 2 : SHIFT ROWS *** //
-void AES::shiftRows(byte* bytes) { 
+void AES::shiftRows(vector<byte>& bytes) { 
     // DO NOTHING WITH ROW 0
     // SHIFT LEFT 1 ROW 1
     std::swap(bytes[1], bytes[13]);
@@ -93,7 +100,7 @@ void AES::shiftRows(byte* bytes) {
     std::swap(bytes[15], bytes[7]);
     std::swap(bytes[15], bytes[11]);
 }
-void AES::inverseShiftRows(byte* bytes) { 
+void AES::inverseShiftRows(vector<byte>& bytes) { 
     // DO NOTHING WITH ROW 0
     // SHIFT RIGHT 1 ROW 1
     std::swap(bytes[1], bytes[5]);
@@ -123,7 +130,7 @@ byte AES::mixByte(byte b, byte galoisValue) {
         default: return b;
     }
 }
-void AES::mixColumns(byte* bytes) { 
+void AES::mixColumns(vector<byte>& bytes) { 
 
     for (int i = 0; i < 4; i++) {
         byte newBytes[4] = {0};
@@ -138,7 +145,7 @@ void AES::mixColumns(byte* bytes) {
             bytes[j + 4*i] = newBytes[j];
     }
 }
-void AES::inverseMixColumns(byte* bytes) { 
+void AES::inverseMixColumns(vector<byte>& bytes) { 
     for (int i = 0; i < 4; i++) {
         byte newBytes[4] = {0};
         for (int j = 0; j < 4; j++)
@@ -154,52 +161,50 @@ void AES::inverseMixColumns(byte* bytes) {
 }
 
 // *** STEP 4 / STEP 3 INVERSE : ADD ROUND KEY *** //
-void AES::addRoundKey(byte* bytes, byte* key) {
-    for (int i = 0; i < 16; i++)
-        bytes[i] ^= key[i];
+void AES::addRoundKey(vector<byte>& bytes, byte wordIndex) {
+    for (byte i = 0; i < 4; i++) {
+        byte byteIndex = 4 * i;
+        for (byte j = 0; j < 4; j++)
+            bytes[byteIndex + j] ^= wordList[wordIndex + i][j];
+    }
 }
 
 // *** KEY METHODS *** //
-byte* AES::expandKey(byte* prevKey, byte rc) {
+void AES::expandKeys(unsigned keyLength, const string& keyText) {
 
-    byte* key = new byte[16];
-
-    for (int i = 0; i < 4; i++)
-        key[i] = prevKey[i+12];
-
-    /*** g Function ***/
-    // left shift 1
-    std::swap(key[0], key[3]);
-    std::swap(key[0], key[2]);
-    std::swap(key[0], key[1]);
-    // byte sub
-    for (int i = 0; i < 4; i++)
-        key[i] = substituteByte(key[i]);
-    // add round constant
-    key[0] ^= rc;
-    /*** end g Function ***/
-
-    for (int i = 0; i < 4; i++)
-        key[i] ^= prevKey[i];
-
-    for (int i = 4; i < 16; i++)
-        key[i] = prevKey[i] ^ key[i - 4];
-
-    return key;
-}
-byte** AES::expandKeys(byte* key) { 
-    byte**  roundKeys = new byte*[11];
-    roundKeys[0] = key;
-    roundKeys[1] = expandKey(roundKeys[0], 0x01);
-
-    byte rc = 0x02;
-    for (int i = 2; i < 11; i++) {
-        roundKeys[i] = expandKey(roundKeys[i-1], rc);
-        rc <<= 1;
-        if (rc == 0) { rc ^= 0x11b; }
+    for (byte i = 0; i < nk; i++) {      
+        wordList[i][0] = (unsigned)keyText[0 + 4*i];
+        wordList[i][1] = (unsigned)keyText[1 + 4*i];
+        wordList[i][2] = (unsigned)keyText[2 + 4*i];
+        wordList[i][3] = (unsigned)keyText[3 + 4*i];
     }
 
-    return roundKeys;
+    byte rcon = 0x01;
+    for (byte i = nk; i < wordCount; i++) {
+        if (i % nk == 0) {
+            wordList[i] = wordList[i-1];
+
+            /*** g Function ***/
+            // RotWord()
+            std::swap(wordList[i][0], wordList[i][3]);
+            std::swap(wordList[i][0], wordList[i][2]);
+            std::swap(wordList[i][0], wordList[i][1]);
+            // SubWord()
+            for (byte j = 0; j < 4; j++)
+                substituteByte(wordList[i][j]);
+            // xor Rcon
+            wordList[i][0] ^= rcon;
+            rcon >= 0x7f ? rcon = 0x1b : rcon *= 2;
+            /*** end g Function ***/
+
+            for (byte j = 0; j < 4; j++)
+                wordList[i][j] ^= wordList[i - nk][j];
+        }
+        else {
+            for (byte j = 0; j < 4; j++)
+                wordList[i][j] = wordList[i - nk][j] ^ wordList[i - 1][j];
+        }
+    }
 }
 
 // *** SUPPORTER METHODS *** //
@@ -207,17 +212,17 @@ int AES::byteToInt(byte hex) {
     if ((int)+hex > 60) return hex - 'a' + 10;
     return hex - '0';
 }
-byte* AES::textToBytes(const char* plaintext) {
-    byte* bytes = new byte[16];
-    for (int i = 0; i < 16; i++) bytes[i] = (int)plaintext[i];
+vector<byte> AES::textToBytes(const string& plaintext) {
+    vector<byte> bytes(16, 0);
+    for (byte i = 0; i < 16; i++) bytes[i] = (unsigned)plaintext[i];
     return bytes;
 }
-char* AES::bytesToText(byte* bytes) {
+char* AES::bytesToText(vector<byte>& bytes) {
     char* text = new char[16];
     for (int i = 0; i < 16; i++) text[i] = (char)bytes[i];
     return text;
 }
-void AES::printBytes(byte* bytes, const char* info) { 
+void AES::printBytes(vector<byte>& bytes, const string& info) { 
     std::cout << "\n" << info << "\n";
 
     for (int i = 0; i < 4; i++) {

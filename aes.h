@@ -2,15 +2,19 @@
 #define AES_H
 
 #include <iostream>
+#include <vector>
 #include "bits/stdc++.h"
+
+using std::string;
+using std::vector;
 
 typedef unsigned char byte;
 
 class AES {
 private:
-    unsigned rounds;
-    byte* key;
-    byte** keyList;
+    string key;
+    byte nr, nk, wordCount;
+    vector<vector<byte>> wordList;
     byte galoisField[16] =
     {
         0x02, 0x03, 0x01, 0x01,
@@ -64,32 +68,32 @@ private:
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     };
 
-    byte substituteByte(byte b);
-    void substituteBytes(byte* bytes);
-    byte inverseSubstituteByte(byte byte);
-    void inverseSubstituteBytes(byte* bytes);
+    void substituteByte(byte& byte);
+    void substituteBytes(vector<byte>& bytes);
+    void inverseSubstituteByte(byte& byte);
+    void inverseSubstituteBytes(vector<byte>& bytes);
 
-    void shiftRows(byte* bytes);
-    void inverseShiftRows(byte* bytes);
+    void shiftRows(vector<byte>& bytes);
+    void inverseShiftRows(vector<byte>& bytes);
 
     byte mixByte(byte b, byte galoisValue);
-    void mixColumns(byte* bytes);
-    void inverseMixColumns(byte* bytes);
+    void mixColumns(vector<byte>& bytes);
+    void inverseMixColumns(vector<byte>& bytes);
     
-    void addRoundKey(byte* bytes, byte* key);
+    void addRoundKey(vector<byte>& bytes, byte wordIndex);
 
     byte* expandKey(byte* prevKey, byte rc);
-    byte** expandKeys(byte* key);
+    void expandKeys(unsigned keyLength, const string& keyText);
 
 public:
-    AES(unsigned rounds, const char* key);
+    AES(unsigned keyLength, const string& keyText);
     char* encrypt(const char* plaintext);
     char* decrypt(const char* ciphertext);
 
     int byteToInt(byte hex);
-    char* bytesToText(byte* bytes);
-    byte* textToBytes(const char* plaintext);
-    void printBytes(byte* bytes, const char* info);
+    char* bytesToText(vector<byte>& bytes);
+    vector<byte> textToBytes(const string& plaintext);
+    void printBytes(vector<byte>& bytes, const string& info);
 };
 
 #endif

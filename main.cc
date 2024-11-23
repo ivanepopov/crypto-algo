@@ -1,14 +1,26 @@
 #include "aes.h"
 #include <fstream>
+#include <string>
 
 int main(int argc, char* argv[]) {
 
+    std::cout << argv[0] << std::endl;
     if (argc != 2) {
-        std::cerr << "Usage: ./main [file]\n";
+        std::cerr << "Usage: ./aes-[128|192|256] [file]\n";
         return 1;
     }
 
     std::string infile = argv[1];
+    unsigned aesKeyLength;
+
+    if      (strcmp(argv[0], "./aes-128")) aesKeyLength = 128;
+    else if (strcmp(argv[0], "./aes-192")) aesKeyLength = 192;
+    else if (strcmp(argv[0], "./aes-256")) aesKeyLength = 256;
+    else {
+        std::cerr << "Usage: ./aes-[128|192|256] [file]\n";
+        return 1;   
+    }
+    
     std::string encryptoutfile = "encrypted_text.txt";
     std::string decryptoutfile = "decrypted_text.txt";
 
@@ -22,7 +34,7 @@ int main(int argc, char* argv[]) {
 
     // Creates AES object with 10 rounds and key "Thats my Kung Fu"
     // Simulates AES-128 only, will add more
-    AES aes(10, "Thats my Kung Fu");
+    AES aes(aesKeyLength, "Thats my Kung Fu");
 
     char buffer[16];
 
