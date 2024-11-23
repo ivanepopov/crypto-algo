@@ -5,4 +5,4 @@ main.o: main.cc
 aes.o: aes.cc aes.h
 
 clean:
-		rm -f main *.o
+		rm -f main *.o *.txt
