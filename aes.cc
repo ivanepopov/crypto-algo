@@ -24,7 +24,7 @@ char* AES::encrypt(const char* plaintext) {
     addRoundKey(bytes, 0);
 
     // ROUNDS 1 - Nr
-    int i = 1;
+    byte i = 1;
     for (; i < nr; i++) {
         substituteBytes(bytes);
         shiftRows(bytes);
@@ -47,7 +47,7 @@ char* AES::decrypt(const char* ciphertext) {
     addRoundKey(bytes, 4*nr);
 
     // ROUNDS Nr - 1
-    int i = nr - 1;
+    byte i = nr - 1;
     for (; i > 0; i--) {
         inverseShiftRows(bytes);
         inverseSubstituteBytes(bytes);
@@ -70,7 +70,7 @@ void AES::substituteByte(byte& byte) {
     byte = Sbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
 }
 void AES::substituteBytes(vector<byte>& bytes) { 
-    for (int i = 0; i < 16; i++)
+    for (byte i = 0; i < 16; i++)
         substituteByte(bytes[i]);
 }
 void AES::inverseSubstituteByte(byte& byte) {
@@ -79,7 +79,7 @@ void AES::inverseSubstituteByte(byte& byte) {
     byte = inverseSbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
 }
 void AES::inverseSubstituteBytes(vector<byte>& bytes) { 
-    for (int i = 0; i < 16; i++)
+    for (byte i = 0; i < 16; i++)
         inverseSubstituteByte(bytes[i]);
 }
 
@@ -132,30 +132,30 @@ byte AES::mixByte(byte b, byte galoisValue) {
 }
 void AES::mixColumns(vector<byte>& bytes) { 
 
-    for (int i = 0; i < 4; i++) {
+    for (byte i = 0; i < 4; i++) {
         byte newBytes[4] = {0};
-        for (int j = 0; j < 4; j++)
+        for (byte j = 0; j < 4; j++)
             newBytes[j] =
                 mixByte(bytes[0 + 4*i], galoisField[0 + 4*j]) ^
                 mixByte(bytes[1 + 4*i], galoisField[1 + 4*j]) ^
                 mixByte(bytes[2 + 4*i], galoisField[2 + 4*j]) ^
                 mixByte(bytes[3 + 4*i], galoisField[3 + 4*j]);
 
-        for (int j = 0; j < 4; j++) 
+        for (byte j = 0; j < 4; j++) 
             bytes[j + 4*i] = newBytes[j];
     }
 }
 void AES::inverseMixColumns(vector<byte>& bytes) { 
-    for (int i = 0; i < 4; i++) {
+    for (byte i = 0; i < 4; i++) {
         byte newBytes[4] = {0};
-        for (int j = 0; j < 4; j++)
+        for (byte j = 0; j < 4; j++)
             newBytes[j] =
                 mixByte(bytes[0 + 4*i], inverseGaloisField[0 + 4*j]) ^
                 mixByte(bytes[1 + 4*i], inverseGaloisField[1 + 4*j]) ^
                 mixByte(bytes[2 + 4*i], inverseGaloisField[2 + 4*j]) ^
                 mixByte(bytes[3 + 4*i], inverseGaloisField[3 + 4*j]);
 
-        for (int j = 0; j < 4; j++) 
+        for (byte j = 0; j < 4; j++) 
             bytes[j + 4*i] = newBytes[j];
     }
 }
@@ -164,26 +164,29 @@ void AES::inverseMixColumns(vector<byte>& bytes) {
 void AES::addRoundKey(vector<byte>& bytes, byte wordIndex) {
     for (byte i = 0; i < 4; i++) {
         byte byteIndex = 4 * i;
-        for (byte j = 0; j < 4; j++)
+        for (byte j = 0; j < 4; j++) {
             bytes[byteIndex + j] ^= wordList[wordIndex + i][j];
+        }
     }
 }
 
 // *** KEY METHODS *** //
 void AES::expandKeys(unsigned keyLength, const string& keyText) {
 
-    for (byte i = 0; i < nk; i++) {      
-        wordList[i][0] = (unsigned)keyText[0 + 4*i];
-        wordList[i][1] = (unsigned)keyText[1 + 4*i];
-        wordList[i][2] = (unsigned)keyText[2 + 4*i];
-        wordList[i][3] = (unsigned)keyText[3 + 4*i];
+    for (byte i = 0; i < nk; i++) {
+        byte offset = 4 * i;      
+        wordList[i][0] = keyText[0 + offset];
+        wordList[i][1] = keyText[1 + offset];
+        wordList[i][2] = keyText[2 + offset];
+        wordList[i][3] = keyText[3 + offset];
     }
 
     byte rcon = 0x01;
     for (byte i = nk; i < wordCount; i++) {
-        if (i % nk == 0) {
-            wordList[i] = wordList[i-1];
 
+        wordList[i] = wordList[i-1];
+
+        if (i % nk == 0) {
             /*** g Function ***/
             // RotWord()
             std::swap(wordList[i][0], wordList[i][3]);
@@ -196,14 +199,14 @@ void AES::expandKeys(unsigned keyLength, const string& keyText) {
             wordList[i][0] ^= rcon;
             rcon >= 0x7f ? rcon = 0x1b : rcon *= 2;
             /*** end g Function ***/
-
-            for (byte j = 0; j < 4; j++)
-                wordList[i][j] ^= wordList[i - nk][j];
         }
-        else {
+        else if (i % 4 == 0 && nk == 8) {
             for (byte j = 0; j < 4; j++)
-                wordList[i][j] = wordList[i - nk][j] ^ wordList[i - 1][j];
+                substituteByte(wordList[i][j]);
         }
+        
+        for (byte j = 0; j < 4; j++)
+            wordList[i][j] ^= wordList[i - nk][j];
     }
 }
 
@@ -214,7 +217,7 @@ int AES::byteToInt(byte hex) {
 }
 vector<byte> AES::textToBytes(const string& plaintext) {
     vector<byte> bytes(16, 0);
-    for (byte i = 0; i < 16; i++) bytes[i] = (unsigned)plaintext[i];
+    for (byte i = 0; i < 16; i++) bytes[i] = plaintext[i];
     return bytes;
 }
 char* AES::bytesToText(vector<byte>& bytes) {
@@ -225,8 +228,8 @@ char* AES::bytesToText(vector<byte>& bytes) {
 void AES::printBytes(vector<byte>& bytes, const string& info) { 
     std::cout << "\n" << info << "\n";
 
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
+    for (byte i = 0; i < 4; i++) {
+        for (byte j = 0; j < 4; j++)
             std::cout << std::setfill('0') << std::setw(2) << std::hex << +bytes[i + 4*j] << " ";
         std::cout << "\n";
     }
