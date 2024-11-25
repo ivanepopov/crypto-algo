@@ -14,9 +14,10 @@ AES::AES(unsigned keyLength, const string& keyText) {
     wordList = words;
     
     expandKeys(keyLength, keyText);
+
 }
 
-char* AES::encrypt(const char* plaintext) {
+string AES::encrypt(const string& plaintext) {
 
     vector<byte> bytes = textToBytes(plaintext);
 
@@ -39,7 +40,7 @@ char* AES::encrypt(const char* plaintext) {
 
     return bytesToText(bytes);
 };
-char* AES::decrypt(const char* ciphertext) {
+string AES::decrypt(const string& ciphertext) {
     
     vector<byte> bytes = textToBytes(ciphertext);
 
@@ -49,18 +50,20 @@ char* AES::decrypt(const char* ciphertext) {
     // ROUNDS Nr - 1
     byte i = nr - 1;
     for (; i > 0; i--) {
-        inverseShiftRows(bytes);
         inverseSubstituteBytes(bytes);
+        inverseShiftRows(bytes);
         addRoundKey(bytes, 4*i);
         inverseMixColumns(bytes);
     }
 
     // ROUND 0
-    inverseShiftRows(bytes);
     inverseSubstituteBytes(bytes);
+    inverseShiftRows(bytes);
     addRoundKey(bytes, 0);
 
-    return bytesToText(bytes);
+    string yoaimo = bytesToText(bytes);
+    std::cout << yoaimo << std::endl;
+    return yoaimo;
 }
 
 // *** STEP 1 : SUB BYTES *** //
@@ -212,7 +215,7 @@ void AES::expandKeys(unsigned keyLength, const string& keyText) {
 
 // *** SUPPORTER METHODS *** //
 int AES::byteToInt(byte hex) {
-    if ((int)+hex > 60) return hex - 'a' + 10;
+    if ((byte)+hex > 60) return hex - 'a' + 10;
     return hex - '0';
 }
 vector<byte> AES::textToBytes(const string& plaintext) {
@@ -220,9 +223,9 @@ vector<byte> AES::textToBytes(const string& plaintext) {
     for (byte i = 0; i < 16; i++) bytes[i] = plaintext[i];
     return bytes;
 }
-char* AES::bytesToText(vector<byte>& bytes) {
-    char* text = new char[16];
-    for (int i = 0; i < 16; i++) text[i] = (char)bytes[i];
+string AES::bytesToText(vector<byte>& bytes) {
+    string text = "                ";
+    for (byte i = 0; i < 16; i++) text[i] = +bytes[i];
     return text;
 }
 void AES::printBytes(vector<byte>& bytes, const string& info) { 

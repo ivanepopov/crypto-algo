@@ -82,16 +82,15 @@ private:
     
     void addRoundKey(vector<byte>& bytes, byte wordIndex);
 
-    byte* expandKey(byte* prevKey, byte rc);
     void expandKeys(unsigned keyLength, const string& keyText);
 
 public:
     AES(unsigned keyLength, const string& keyText);
-    char* encrypt(const char* plaintext);
-    char* decrypt(const char* ciphertext);
+    string encrypt(const string& plaintext);
+    string decrypt(const string& ciphertext);
 
     int byteToInt(byte hex);
-    char* bytesToText(vector<byte>& bytes);
+    string bytesToText(vector<byte>& bytes);
     vector<byte> textToBytes(const string& plaintext);
     void printBytes(vector<byte>& bytes, const string& info);
 };
