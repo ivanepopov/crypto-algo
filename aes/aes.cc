@@ -16,9 +16,9 @@ AES::AES(unsigned keyLength, const string& keyText) {
     expandKeys(keyLength, keyText);
 }
 
-string AES::encrypt(const string& plaintext) {
+void AES::encrypt(const string& plaintext, vector<byte>& bytes) {
 
-    vector<byte> bytes = textToBytes(plaintext);
+    for (byte i = 0; i < 16; i++) bytes[i] = plaintext[i];
 
     // ROUND 0
     addRoundKey(bytes, 0);
@@ -36,13 +36,8 @@ string AES::encrypt(const string& plaintext) {
     substituteBytes(bytes);
     shiftRows(bytes);
     addRoundKey(bytes, 4*i);
-
-    return bytesToText(bytes);
 };
-string AES::decrypt(const string& ciphertext) {
-    
-    vector<byte> bytes = textToBytes(ciphertext);
-
+void AES::decrypt(vector<byte>& bytes) {
     // ROUND Nr
     addRoundKey(bytes, 4*nr);
 
@@ -59,15 +54,13 @@ string AES::decrypt(const string& ciphertext) {
     inverseSubstituteBytes(bytes);
     inverseShiftRows(bytes);
     addRoundKey(bytes, 0);
-
-    return bytesToText(bytes);
 }
 
 // *** STEP 1 : SUB BYTES *** //
 void AES::substituteByte(byte& byte) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << std::hex << +byte;
-    byte = Sbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
+    byte = Sbox[hexToInt(ss.str()[0])][hexToInt(ss.str()[1])];
 }
 void AES::substituteBytes(vector<byte>& bytes) { 
     for (byte i = 0; i < 16; i++)
@@ -76,7 +69,7 @@ void AES::substituteBytes(vector<byte>& bytes) {
 void AES::inverseSubstituteByte(byte& byte) {
     std::stringstream ss;
     ss << std::setfill('0') << std::setw(2) << std::hex << +byte;
-    byte = inverseSbox[byteToInt(ss.str()[0])][byteToInt(ss.str()[1])];
+    byte = inverseSbox[hexToInt(ss.str()[0])][hexToInt(ss.str()[1])];
 }
 void AES::inverseSubstituteBytes(vector<byte>& bytes) { 
     for (byte i = 0; i < 16; i++)
@@ -211,14 +204,17 @@ void AES::expandKeys(unsigned keyLength, const string& keyText) {
 }
 
 // *** SUPPORTER METHODS *** //
-int AES::byteToInt(byte hex) {
+byte AES::hexToInt(byte hex) {
     if ((byte)+hex > 60) return hex - 'a' + 10;
     return hex - '0';
 }
-vector<byte> AES::textToBytes(const string& plaintext) {
-    vector<byte> bytes(16, 0);
-    for (byte i = 0; i < 16; i++) bytes[i] = plaintext[i];
-    return bytes;
+void AES::textToBytes(const char* text, vector<byte>& bytes) {
+    byte temp;
+    for (byte i = 0, j = 0; i < 32; i += 2, j++) {
+        temp = hexToInt(text[i]) * 16;
+        temp += hexToInt(text[i+1]);
+        bytes[j] = temp;
+    }
 }
 string AES::bytesToText(vector<byte>& bytes) {
     string text = "                ";
@@ -227,10 +223,7 @@ string AES::bytesToText(vector<byte>& bytes) {
 }
 void AES::printBytes(vector<byte>& bytes, const string& info) { 
     std::cout << "\n" << info << "\n";
-
-    for (byte i = 0; i < 4; i++) {
-        for (byte j = 0; j < 4; j++)
-            std::cout << std::setfill('0') << std::setw(2) << std::hex << +bytes[i + 4*j] << " ";
-        std::cout << "\n";
-    }
+    for (byte i = 0; i < 16; i++)
+        std::cout << std::setfill('0') << std::setw(2) << std::hex << +bytes[i] << " ";
+    std::cout << "\n";
 }

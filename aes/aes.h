@@ -86,12 +86,12 @@ private:
 
 public:
     AES(unsigned keyLength, const string& keyText);
-    string encrypt(const string& plaintext);
-    string decrypt(const string& ciphertext);
+    void encrypt(const string& plaintext, vector<byte>& bytes);
+    void decrypt(vector<byte>& bytes);
 
-    int byteToInt(byte hex);
+    byte hexToInt(byte hex);
     string bytesToText(vector<byte>& bytes);
-    vector<byte> textToBytes(const string& plaintext);
+    void textToBytes(const char* text, vector<byte>& bytes);
     void printBytes(vector<byte>& bytes, const string& info);
 };
 

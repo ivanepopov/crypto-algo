@@ -27,25 +27,28 @@ int main(int argc, char* argv[]) {
 
     if (!FILE_IN_PLAINTEXT.is_open()) { std::cerr << "Error opening file(s)!\n"; return 1; }
 
-    // Creates AES object with 10 rounds and key "Thats my Kung Fu"
-    // Simulates AES-128 only, will add more
+    // Creates AES object with Nr rounds and key
+    // Simulates AES-128, AES-192, and AES-256
     AES aes(aesKeyLength, key);
 
-    char buffer[16];
+    char buffer[16], decodebuffer[32];
+    vector<byte> bytes(16, 0);
 
     // Perform AES encryption on input
     // (1) read 16 bytes
     // (2) encrypt
     // (3) write to encrypted text file
     while (FILE_IN_PLAINTEXT.read(buffer, 16)) {
-        FILE_OUT_ENCRYPT << aes.encrypt(buffer);
+        aes.encrypt(buffer, bytes);
+        for (byte i = 0; i < 16; i++) FILE_OUT_ENCRYPT << std::setfill('0') << std::setw(2) << std::hex << +bytes[i];
     }
 
     // if input text file length modulo 16 != 0
     // (4) final encryption of bytes with padding of spaces at end
     if (FILE_IN_PLAINTEXT.gcount() != 0) {
-        for (int i = FILE_IN_PLAINTEXT.gcount(); i < 16; i++) buffer[i] = ' ';
-        FILE_OUT_ENCRYPT << aes.encrypt(buffer);
+        for (byte i = FILE_IN_PLAINTEXT.gcount(); i < 16; i++) buffer[i] = ' ';
+        aes.encrypt(buffer, bytes);
+        for (byte i = 0; i < 16; i++) FILE_OUT_ENCRYPT << std::setfill('0') << std::setw(2) << std::hex << +bytes[i];
     }
 
     FILE_IN_PLAINTEXT.close();
@@ -60,15 +63,19 @@ int main(int argc, char* argv[]) {
     // (1) read 16 bytes
     // (2) decrypt
     // (3) write to decrypted text file
-    while (FILE_IN_ENCRYPT.read(buffer, 16)) {
-        FILE_OUT_DECRYPT << aes.decrypt(buffer);
+    while (FILE_IN_ENCRYPT.read(decodebuffer, 32)) {
+        aes.textToBytes(decodebuffer, bytes);
+        aes.decrypt(bytes);
+        FILE_OUT_DECRYPT << reinterpret_cast<char*>(bytes.data());
     }
 
     // if text file length modulo 16 != 0
     // (4) final decryption of bytes with padding of spaces at end
     if (FILE_IN_ENCRYPT.gcount() != 0) {
-        for (int i = FILE_IN_ENCRYPT.gcount(); i < 16; i++) buffer[i] = ' ';
-        FILE_OUT_DECRYPT << aes.decrypt(buffer);
+        for (byte i = FILE_IN_ENCRYPT.gcount(); i < 32; i++) buffer[i] = ' ';
+        aes.textToBytes(decodebuffer, bytes);
+        aes.decrypt(bytes);
+        FILE_OUT_DECRYPT << reinterpret_cast<char*>(bytes.data());
     }
 
     FILE_IN_ENCRYPT.close();
