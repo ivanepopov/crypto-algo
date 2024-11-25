@@ -3,16 +3,15 @@
 
 int main(int argc, char* argv[]) {
 
-    std::cout << argv[0] << std::endl;
     if (argc != 2) {
         std::cerr << "Usage: ./aes-[128|192|256] [file]\n";
         return 1;
     }
 
-    std::string infile = argv[1];
+    string PLAINTEXT = argv[1];
     unsigned aesKeyLength; string key;
 
-    if (strcmp(argv[0], "./aes-128")==0)      { aesKeyLength = 128; key = "Thats my Kung Fu"; }
+    if      (strcmp(argv[0], "./aes-128")==0) { aesKeyLength = 128; key = "Thats my Kung Fu"; }
     else if (strcmp(argv[0], "./aes-192")==0) { aesKeyLength = 192; key = "Thats my Kung FuThats my"; }
     else if (strcmp(argv[0], "./aes-256")==0) { aesKeyLength = 256; key = "Thats my Kung FuThats my Kung Fu"; }
     else {
@@ -20,16 +19,13 @@ int main(int argc, char* argv[]) {
         return 1;   
     }
 
-    std::string encryptoutfile = "encrypted_text.txt";
-    std::string decryptoutfile = "decrypted_text.txt";
+    string FILE_ENCRYPT = "encrypted_text.txt";
+    string FILE_DECRYPT = "decrypted_text.txt";
+    
+    std::ifstream FILE_IN_PLAINTEXT(PLAINTEXT, std::ios::binary);
+    std::ofstream FILE_OUT_ENCRYPT(FILE_ENCRYPT, std::ios::binary);
 
-    std::ifstream plaintext(infile);
-    std::ofstream outencrypt(encryptoutfile);
-
-    if (!plaintext.is_open()) {
-        std::cerr << "Error opening file(s)!\n";
-        return 1;
-    }
+    if (!FILE_IN_PLAINTEXT.is_open()) { std::cerr << "Error opening file(s)!\n"; return 1; }
 
     // Creates AES object with 10 rounds and key "Thats my Kung Fu"
     // Simulates AES-128 only, will add more
@@ -41,36 +37,40 @@ int main(int argc, char* argv[]) {
     // (1) read 16 bytes
     // (2) encrypt
     // (3) write to encrypted text file
-    while (plaintext.read(buffer, 16))
-        outencrypt.write(aes.encrypt(buffer), 16);
-    
-    // if input text file length modulo 16 != 0
-    // (4) final encryption of bytes with padding of spaces at end
-    if (plaintext.gcount() != 0) {
-        for (int i = plaintext.gcount(); i < 16; i++) buffer[i] = ' ';
-        outencrypt.write(aes.encrypt(buffer), 16);
+    while (FILE_IN_PLAINTEXT.read(buffer, 16)) {
+        FILE_OUT_ENCRYPT << aes.encrypt(buffer);
     }
 
-    plaintext.close();
-    outencrypt.close();
+    // if input text file length modulo 16 != 0
+    // (4) final encryption of bytes with padding of spaces at end
+    if (FILE_IN_PLAINTEXT.gcount() != 0) {
+        for (int i = FILE_IN_PLAINTEXT.gcount(); i < 16; i++) buffer[i] = ' ';
+        FILE_OUT_ENCRYPT << aes.encrypt(buffer);
+    }
 
-    std::ifstream inencrypt(encryptoutfile);
-    std::ofstream outdecrypt(decryptoutfile);
+    FILE_IN_PLAINTEXT.close();
+    FILE_OUT_ENCRYPT.close();
+
+    std::ifstream FILE_IN_ENCRYPT(FILE_ENCRYPT, std::ios::binary);
+    std::ofstream FILE_OUT_DECRYPT(FILE_DECRYPT, std::ios::binary);
+
+    if (!FILE_IN_ENCRYPT.is_open()) { std::cerr << "Error opening file(s)!\n"; return 1; }
 
     // Perform AES decryption
     // (1) read 16 bytes
     // (2) decrypt
     // (3) write to decrypted text file
-    while (inencrypt.read(buffer, 16))
-        outdecrypt.write(aes.decrypt(buffer), 16);
+    while (FILE_IN_ENCRYPT.read(buffer, 16)) {
+        FILE_OUT_DECRYPT << aes.decrypt(buffer);
+    }
 
     // if text file length modulo 16 != 0
     // (4) final decryption of bytes with padding of spaces at end
-    if (inencrypt.gcount() != 0) {
-        for (int i = plaintext.gcount(); i < 16; i++) buffer[i] = ' ';
-        outencrypt.write(aes.encrypt(buffer), 16);
+    if (FILE_IN_ENCRYPT.gcount() != 0) {
+        for (int i = FILE_IN_ENCRYPT.gcount(); i < 16; i++) buffer[i] = ' ';
+        FILE_OUT_DECRYPT << aes.decrypt(buffer);
     }
 
-    inencrypt.close();
-    outdecrypt.close();
+    FILE_IN_ENCRYPT.close();
+    FILE_OUT_DECRYPT.close();
 }
