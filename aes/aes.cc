@@ -14,7 +14,6 @@ AES::AES(unsigned keyLength, const string& keyText) {
     wordList = words;
     
     expandKeys(keyLength, keyText);
-
 }
 
 string AES::encrypt(const string& plaintext) {
@@ -61,9 +60,7 @@ string AES::decrypt(const string& ciphertext) {
     inverseShiftRows(bytes);
     addRoundKey(bytes, 0);
 
-    string yoaimo = bytesToText(bytes);
-    std::cout << yoaimo << std::endl;
-    return yoaimo;
+    return bytesToText(bytes);
 }
 
 // *** STEP 1 : SUB BYTES *** //
