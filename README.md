@@ -9,7 +9,7 @@ AES Usage:
 
 RSA Usage:
 ```
-./rsa
+./rsa [file]
 ```
 ---
 
