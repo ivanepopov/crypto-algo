@@ -3,11 +3,17 @@
 #include <iostream>
 #include <string>
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc != 2) {
+        std::cerr << "Usage: ./rsa [file]\n";
+        return 1;
+    }
+
+    std::string PLAINTEXT = argv[1];
     RSA rsa;
 
-    std::ifstream F_PLAINTEXT("TEXT_FILE");
+    std::ifstream F_PLAINTEXT(PLAINTEXT);
     std::ofstream F_OUT_ENCRYPT("encrypted_text.txt");
 
     // (1) Read each character
